@@ -20,15 +20,17 @@ import org.pytorch.Tensor;
 //import org.nd4j.linalg.factory.Nd4j;
 //import org.nd4j.linalg.indexing.NDArrayIndex;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.Random;
 
-
-
+import com.chaquo.python.*;
 
 
 public class MainActivity2 extends AppCompatActivity {
@@ -43,6 +45,7 @@ public class MainActivity2 extends AppCompatActivity {
 
     // PyTorch model
     Module module;
+    Module decoder;
 
     // Size of the input tensor
     int inSize = 512;
@@ -83,8 +86,8 @@ public class MainActivity2 extends AppCompatActivity {
 
         // Load in the model
         try {
-            module = LiteModuleLoader.load(assetFilePath("imageGen.pt"));
-//            Module module1 = LiteModuleLoader.load(assetFilePath("atnet_model.pt"));
+//            module = LiteModuleLoader.load(assetFilePath("imageGen.pt"));
+            decoder = LiteModuleLoader.load(assetFilePath("vgnetmodeloptimised1126.pt"));
         } catch (IOException e) {
             Log.e(TAG, "Unable to load model", e);
         }
@@ -123,25 +126,35 @@ public class MainActivity2 extends AppCompatActivity {
 //                }
 //
 
+                Tensor example_image = null,fake_lmark = null,example_landmark = null;
 
-                // Load in the model
+                // Load tensors from the file
                 try {
-                    Module input_mfcc = LiteModuleLoader.load(assetFilePath("input_mfcc.pt"));
-                    Module example_landmark = LiteModuleLoader.load(assetFilePath("example_landmark_atnet.pt"));
+                    example_image = Tensor.fromBlob(loadTensorData("example_image_6.txt"), new long[]{1,3,128,128});
+                    fake_lmark = Tensor.fromBlob(loadTensorData("fake_lmark_6.txt"),new long[]{1,149,136});
+                    example_landmark = Tensor.fromBlob(loadTensorData("example_landmark_6.txt"),new long[]{1,136});
+                    Log.e(TAG, "loaded tensors"+example_image);
                 } catch (IOException e) {
-                    Log.e(TAG, "Unable to load model", e);
+                    Log.e(TAG, "Unable to load tensor", e);
                 }
-
-
-
 
 
 
                 // Prepare the input tensor. This time, its a
                 // a single integer value.
                 Tensor inputTensor = generateTensor(inSize);
+                Log.e(TAG, "inputTensor"+inputTensor);
+
 
                 // Run the process on a background thread
+                Tensor finalExample_image = example_image;
+                Tensor finalFake_lmark = fake_lmark;
+                Tensor finalExample_landmark = example_landmark;
+
+//                Log.e(TAG,"ok : started");
+//                float[] fake_ims, atts ,ms ,extra = decoder.forward(IValue.from(finalExample_image),IValue.from(finalFake_lmark),IValue.from(finalExample_landmark)).toTensor().getDataAsFloatArray();
+//                Log.e(TAG,"hurray done");
+
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
@@ -150,46 +163,61 @@ public class MainActivity2 extends AppCompatActivity {
                         // Note that the output is in the layout
                         // [R, G, B, R, G, B, ..., B] and we
                         // have to deal with that.
-                        float[] outputArr = module.forward(IValue.from(inputTensor)).toTensor().getDataAsFloatArray();
+//                        float[] outputArr  = {0.1F};
+//                        float[] outputArr = module.forward(IValue.from(inputTensor)).toTensor().getDataAsFloatArray();
+                        Log.e(TAG,"ok : started");
+//                        .toTensor().getDataAsDoubleArray()
+                        try{
+
+                            IValue fake_ims = decoder.forward(IValue.from(finalExample_image), IValue.from(finalFake_lmark), IValue.from(finalExample_landmark));
+                            IValue[] fake_ims_tuple = fake_ims.toTuple();
+                            float[] outputArr = fake_ims_tuple[0].toTensor().getDataAsFloatArray();
+                        }  catch (Error e) {
+                            Log.e(TAG, "OMG : ", e);
+                        }
+
+//                        float[] fake_ims, atts ,ms ,extra = decoder.forward(IValue.from(finalExample_image),IValue.from(finalFake_lmark),IValue.from(finalExample_landmark)).toTensor().getDataAsFloatArray();
+                        Log.e(TAG,"hurray done");
 //                        Tensor  fake_lmar = module1.forward(IValue.from(example_landmark, input_mfcc)).toTensor();
                         // Ensure the output array has values between 0 and 255
-                        for (int i = 0; i < outputArr.length; i++) {
-                            outputArr[i] = Math.min(Math.max(outputArr[i], 0), 255);
-                        }
+//                        for (int i = 0; i < outputArr.length; i++) {
+//                            outputArr[i] = Math.min(Math.max(outputArr[i], 0), 255);
+//                        }
 
                         // Create a RGB bitmap of the correct shape
-                        Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
-
-                        // Iterate over all values in the output tensor
-                        // and put them into the bitmap
-                        int loc = 0;
-                        for (int y = 0; y < width; y++) {
-                            for (int x = 0; x < height; x++) {
-                                bmp.setPixel(x, y, Color.rgb((int)outputArr[loc], (int)outputArr[loc+1], (int)outputArr[loc+2]));
-                                loc += 3;
-                            }
-                        }
+//                        Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565);
+//
+//                        // Iterate over all values in the output tensor
+//                        // and put them into the bitmap
+//                        int loc = 0;
+//                        for (int y = 0; y < width; y++) {
+//                            for (int x = 0; x < height; x++) {
+//                                bmp.setPixel(x, y, Color.rgb((int)outputArr[loc], (int)outputArr[loc+1], (int)outputArr[loc+2]));
+//                                loc += 3;
+//                            }
+//                        }
 
                         // The output of the network is no longer needed
-                        outputArr = null;
-
-                        // Resize the bitmap to a larger image
-                        bmp = Bitmap.createScaledBitmap(
-                                bmp, 512, 512, false);
-
-                        // Display the image
-                        Bitmap finalBmp = bmp;
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                ivImage.setImageBitmap(finalBmp);
-
-                                // Error handing
-                                btnGenerate.setClickable(true);
-                                tvWaiting.setVisibility(View.INVISIBLE);
-                                ivImage.setVisibility(View.VISIBLE);
-                            }
-                        });
+//                        outputArr = null;
+//
+//                        // Resize the bitmap to a larger image
+//                        bmp = Bitmap.createScaledBitmap(
+//                                bmp, 512, 512, false);
+//
+//                        // Display the image
+//                        Bitmap finalBmp = bmp;
+//                        runOnUiThread(new Runnable() {
+//                            @Override
+//                            public void run() {
+//                                ivImage.setImageBitmap(finalBmp);
+//
+//                                // Error handing
+//                                btnGenerate.setClickable(true);
+//                                tvWaiting.setVisibility(View.INVISIBLE);
+//                                ivImage.setVisibility(View.VISIBLE);
+//                            }
+//                        }
+//                        );
 
                     }
                 }).start();
@@ -214,7 +242,7 @@ public class MainActivity2 extends AppCompatActivity {
     }
 
 
-    // Given the name of the pytorch model, get the path for that model
+//     Given the name of the pytorch model, get the path for that model
     public String assetFilePath(String assetName) throws IOException {
         File file = new File(this.getFilesDir(), assetName);
         if (file.exists() && file.length() > 0) {
@@ -234,6 +262,7 @@ public class MainActivity2 extends AppCompatActivity {
         }
     }
 
+
     public void deleteRecursive(File fileOrDirectory) {
         if (fileOrDirectory.isDirectory()) {
             for (File child : fileOrDirectory.listFiles()) {
@@ -241,5 +270,33 @@ public class MainActivity2 extends AppCompatActivity {
             }
         }
         fileOrDirectory.delete();
+    }
+    // Utility function to load tensor data from file
+    private float[] loadTensorData(String assetFilePath) throws IOException {
+
+        InputStream is = getAssets().open(assetFilePath);
+
+        InputStreamReader inputStreamReader = new InputStreamReader(is);
+        BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
+        String line = bufferedReader.readLine();
+        String[] values = line.split(","); // Assuming values are separated by commas
+
+//        Log.e(TAG,"values : " + values);
+        float[] floatArray = new float[values.length];
+        for (int i = 0; i < values.length; i++) {
+            floatArray[i] = Float.parseFloat(values[i]);
+        }
+        Log.e(TAG,"floatArray : " + floatArray);
+
+        return floatArray;
+
+//        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+//        byte[] buffer = new byte[1024];
+//        int bytesRead;
+//        while ((bytesRead = is.read(buffer)) != -1) {
+//            bos.write(buffer, 0, bytesRead);
+//        }
+//        Log.e(TAG,"bos.shape: "+bos.toString().length());
+//        return bos.toByteArray();
     }
 }
