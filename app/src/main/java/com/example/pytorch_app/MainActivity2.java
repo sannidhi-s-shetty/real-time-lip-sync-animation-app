@@ -187,7 +187,7 @@ public class MainActivity2 extends AppCompatActivity {
 //                            Log.e(TAG, "shape : "+ shape[1]);
 //                            Log.e(TAG, "shape : "+ shape[2]);
 
-                            for (int indx = 0; indx < 1; indx++) {
+                            for (int indx = 0; indx < shape[1]; indx++) {
                                 float[] fakeStore = new float[(int) (shape[2] * shape[3] * shape[4])];//[1,149,3,128,128]
                                 System.arraycopy(outputData, indx * fakeStore.length, fakeStore, 0, fakeStore.length);
                                 long[] reshapeDims = {(int) shape[2], (int) shape[3], (int) shape[4]};
@@ -209,7 +209,7 @@ public class MainActivity2 extends AppCompatActivity {
 //                                Log.e(TAG, "reshapedTensor : "+reshapedTensor);
 
 //                                float[] reshapedArray = reshapedTensor.getDataAsFloatArray();
-                                convertToBitmap(newFakeStore);
+                                convertToBitmap(newFakeStore,indx);
                             }
 
                         }  catch (Error e) {
@@ -274,7 +274,7 @@ public class MainActivity2 extends AppCompatActivity {
         });
     }
 
-    private void convertToBitmap(float[] outputArr) {
+    private void convertToBitmap(float[] outputArr,int imageIndex) {
 
 //         Ensure the output array has values between 0 and 255
                         for (int i = 0; i < outputArr.length; i++) {
@@ -305,6 +305,21 @@ public class MainActivity2 extends AppCompatActivity {
 
                         // Display the image
                         Bitmap finalBmp = bmp;
+
+                        String filePath = "/data/data/com.example.pytorch_app/files/temp/img/" + imageIndex + ".png";
+                        File file = new File(filePath);
+                        FileOutputStream outStream;
+                        try {
+                            outStream = new FileOutputStream(file);
+                            finalBmp.compress(Bitmap.CompressFormat.PNG, 100, outStream);
+                            outStream.flush();
+                            outStream.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+
+
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {

@@ -47,4 +47,5 @@ dependencies {
     implementation 'org.pytorch:pytorch_android_lite:2.1.0'
 
 
+
 }
