@@ -55,6 +55,8 @@ public class MainActivity2 extends AppCompatActivity {
     Module module;
     Module decoder;
 
+    Module encoder;
+
     // Size of the input tensor
     int inSize = 512;
 
@@ -94,7 +96,7 @@ public class MainActivity2 extends AppCompatActivity {
 
         // Load in the model
         try {
-            module = LiteModuleLoader.load(assetFilePath("imageGen.pt"));
+            encoder  = LiteModuleLoader.load(assetFilePath("atnetmodeloptimised1126.pt"));
             decoder = LiteModuleLoader.load(assetFilePath("vgnetmodeloptimised1126.pt"));
         } catch (IOException e) {
             Log.e(TAG, "Unable to load model", e);
@@ -133,11 +135,14 @@ public class MainActivity2 extends AppCompatActivity {
 //                    e.printStackTrace();
 //                }
 //
-
+                Tensor input_mfcc = null,example_landmark_atnet = null;
                 Tensor example_image = null,fake_lmark = null,example_landmark = null;
+
 
                 // Load tensors from the file
                 try {
+                    input_mfcc = Tensor.fromBlob(loadTensorData("input_mfcc_6.txt"), new long[]{1, 149, 28, 12});
+                    example_landmark_atnet = Tensor.fromBlob(loadTensorData("example_landmark_atnet_6.txt"), new long[]{1, 6});
                     example_image = Tensor.fromBlob(loadTensorData("example_image_6.txt"), new long[]{1,3,128,128});
                     fake_lmark = Tensor.fromBlob(loadTensorData("fake_lmark_6.txt"),new long[]{1,149,136});
                     example_landmark = Tensor.fromBlob(loadTensorData("example_landmark_6.txt"),new long[]{1,136});
@@ -155,6 +160,8 @@ public class MainActivity2 extends AppCompatActivity {
 
 
                 // Run the process on a background thread
+                Tensor finalInput_mfcc = input_mfcc;
+                Tensor finalExample_landmark_atnet = example_landmark_atnet;
                 Tensor finalExample_image = example_image;
                 Tensor finalFake_lmark = fake_lmark;
                 Tensor finalExample_landmark = example_landmark;
@@ -176,14 +183,24 @@ public class MainActivity2 extends AppCompatActivity {
 //                        Log.e(TAG,"outputArr: "+outputArr);
                         Log.e(TAG,"ok : started");
 //                        .toTensor().getDataAsDoubleArray()
-                        long totalStart = System.currentTimeMillis();
+                        double totalStart = System.currentTimeMillis();
                         try{
+                            //atnet
+                            double atnetStart = System.currentTimeMillis();
+                            IValue atnetOutput = encoder.forward(IValue.from(finalExample_landmark_atnet), IValue.from(finalInput_mfcc));
+                            double atnetEnd =  System.currentTimeMillis();
+                            double atnetElapsedTime = atnetEnd - atnetStart;
+//                            float atnetProcessingSpeed = 149000/atnetElapsedTime;
+//                            Log.d("ATnetProcessingSpeed", "Start : " + atnetStart);
+//                            Log.d("ATnetProcessingSpeed", "End : " + atnetEnd);
+                            Log.d("ATnetProcessingSpeed", "Elapsed Time to run ATnet model : " + atnetElapsedTime+ " milliseconds");
 
-                            long startTime = System.currentTimeMillis();
+
+                            double startTime = System.currentTimeMillis();
                             IValue output = decoder.forward(IValue.from(finalExample_image), IValue.from(finalFake_lmark), IValue.from(finalExample_landmark));
-                            long endTime = System.currentTimeMillis();
-                            long elapsedTime = endTime - startTime;
-                            float vgnetFramesPerSecond = 149000/elapsedTime;
+                            double endTime = System.currentTimeMillis();
+                            double elapsedTime = endTime - startTime;
+                            double vgnetFramesPerSecond = 149000/elapsedTime;
                             Log.d("VGnetProcessingSpeed", "Elapsed Time to run VGnet model : " + vgnetFramesPerSecond + " frames/second");
 
 
@@ -197,9 +214,9 @@ public class MainActivity2 extends AppCompatActivity {
 //                            Log.e(TAG, "shape : "+ shape[0]);
 //                            Log.e(TAG, "shape : "+ shape[1]);
 //                            Log.e(TAG, "shape : "+ shape[2]);
-                            long totalImageGenTime = 0;
+                            double totalImageGenTime = 0;
                             for (int indx = 0; indx < shape[1]; indx++) {
-                                long start = System.currentTimeMillis();
+                                double start = System.currentTimeMillis();
                                 float[] fakeStore = new float[(int) (shape[2] * shape[3] * shape[4])];//[1,149,3,128,128]
                                 System.arraycopy(outputData, indx * fakeStore.length, fakeStore, 0, fakeStore.length);
 //                                long[] reshapeDims = {(int) shape[2], (int) shape[3], (int) shape[4]};
@@ -226,12 +243,12 @@ public class MainActivity2 extends AppCompatActivity {
 
 //                                float[] reshapedArray = reshapedTensor.getDataAsFloatArray();
                                 convertToBitmap(newFakeStore,indx);
-                                long end = System.currentTimeMillis();
-                                long elapsed = end - start;
+                                double end = System.currentTimeMillis();
+                                double elapsed = end - start;
                                 totalImageGenTime = totalImageGenTime+elapsed;
 
                             }
-                            float imageGenAverage = totalImageGenTime/149000;
+                            double imageGenAverage = totalImageGenTime/149000;
                             Log.d("ImageGenerationAverage", "Time taken to generate 1 image: " + imageGenAverage + " seconds");
 //                            generateVideo();
 
@@ -241,10 +258,10 @@ public class MainActivity2 extends AppCompatActivity {
 
 //                        float[] fake_ims, atts ,ms ,extra = decoder.forward(IValue.from(finalExample_image),IValue.from(finalFake_lmark),IValue.from(finalExample_landmark)).toTensor().getDataAsFloatArray();
                         Log.e(TAG,"hurray done");
-                        long totalEnd = System.currentTimeMillis();
-                        long totalElaspsed = totalStart - totalEnd;
-                        float totalFramesPerSecond = 149000/totalElaspsed;
-                        Log.d("VGnetRuntime", "Total runtime" + totalFramesPerSecond+ "frames/second");
+                        double totalEnd = System.currentTimeMillis();
+                        double totalElaspsed = totalStart - totalEnd;
+                        double totalFramesPerSecond = 149000/totalElaspsed;
+                        Log.d("TotalRuntime", "Total runtime" + totalFramesPerSecond+ "frames/second");
 
 
 
