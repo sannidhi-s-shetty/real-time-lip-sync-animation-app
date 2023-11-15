@@ -32,6 +32,14 @@ import java.util.Random;
 
 import com.chaquo.python.*;
 
+import android.media.MediaCodec;
+import android.media.MediaCodecInfo;
+import android.media.MediaFormat;
+import android.os.Environment;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class MainActivity2 extends AppCompatActivity {
 
@@ -133,7 +141,7 @@ public class MainActivity2 extends AppCompatActivity {
                     example_image = Tensor.fromBlob(loadTensorData("example_image_6.txt"), new long[]{1,3,128,128});
                     fake_lmark = Tensor.fromBlob(loadTensorData("fake_lmark_6.txt"),new long[]{1,149,136});
                     example_landmark = Tensor.fromBlob(loadTensorData("example_landmark_6.txt"),new long[]{1,136});
-                    Log.e(TAG, "loaded tensors"+example_image);
+//                    Log.e(TAG, "loaded tensors"+example_image);
                 } catch (IOException e) {
                     Log.e(TAG, "Unable to load tensor", e);
                 }
@@ -142,8 +150,8 @@ public class MainActivity2 extends AppCompatActivity {
 
                 // Prepare the input tensor. This time, its a
                 // a single integer value.
-                Tensor inputTensor = generateTensor(inSize);
-                Log.e(TAG, "inputTensor"+inputTensor);
+//                Tensor inputTensor = generateTensor(inSize);
+//                Log.e(TAG, "inputTensor"+inputTensor);
 
 
                 // Run the process on a background thread
@@ -170,15 +178,15 @@ public class MainActivity2 extends AppCompatActivity {
 //                        .toTensor().getDataAsDoubleArray()
                         try{
                             long startTime = System.currentTimeMillis();
-
                             IValue output = decoder.forward(IValue.from(finalExample_image), IValue.from(finalFake_lmark), IValue.from(finalExample_landmark));
                             long endTime = System.currentTimeMillis();
                             long elapsedTime = endTime - startTime;
-
                             Log.d("ProcessingSpeed", "Elapsed Time: " + elapsedTime + " milliseconds");
+
+
                             IValue[] output_tuple = output.toTuple();
                             Tensor fake_ims = output_tuple[0].toTensor();
-                            Log.e(TAG, "Type fake_ims : "+ fake_ims);
+//                            Log.e(TAG, "Type fake_ims : "+ fake_ims);
 //                            Log.e(TAG, "Length fake_ims : "+ fake_ims.length);
                             float[] outputData = fake_ims.getDataAsFloatArray();
                             long[] shape = fake_ims.shape();
@@ -188,10 +196,11 @@ public class MainActivity2 extends AppCompatActivity {
 //                            Log.e(TAG, "shape : "+ shape[2]);
 
                             for (int indx = 0; indx < shape[1]; indx++) {
+                                long start = System.currentTimeMillis();
                                 float[] fakeStore = new float[(int) (shape[2] * shape[3] * shape[4])];//[1,149,3,128,128]
                                 System.arraycopy(outputData, indx * fakeStore.length, fakeStore, 0, fakeStore.length);
-                                long[] reshapeDims = {(int) shape[2], (int) shape[3], (int) shape[4]};
-                                Tensor reshapedTensor = Tensor.fromBlob(fakeStore, reshapeDims);
+//                                long[] reshapeDims = {(int) shape[2], (int) shape[3], (int) shape[4]};
+//                                Tensor reshapedTensor = Tensor.fromBlob(fakeStore, reshapeDims);
 
                                 int dim0 = 3;
                                 int dim1 = 128;
@@ -210,7 +219,11 @@ public class MainActivity2 extends AppCompatActivity {
 
 //                                float[] reshapedArray = reshapedTensor.getDataAsFloatArray();
                                 convertToBitmap(newFakeStore,indx);
+                                long end = System.currentTimeMillis();
+                                long elapsed = endTime - startTime;
+                                Log.d("ImageGeneration", "Time taken to generate one image from floatArray["+ indx + "] :" + elapsed + " milliseconds");
                             }
+//                            generateVideo();
 
                         }  catch (Error e) {
                             Log.e(TAG, "OMG : ", e);
@@ -274,13 +287,28 @@ public class MainActivity2 extends AppCompatActivity {
         });
     }
 
+//    private void generateVideo() {
+//        String imagePattern = "/data/data/com.example.pytorch_app/files/temp/img/%d.png";
+//
+//        String outputVideoPath = "/data/data/com.example.pytorch_app/files/output.mp4";
+//        String ffmpegCommand = String.format("ffmpeg -framerate 30 -i %s -c:v libx264 -pix_fmt yuv420p %s", imagePattern, outputVideoPath);
+//
+//        try {
+//            Process process = Runtime.getRuntime().exec(ffmpegCommand);
+//            process.waitFor();
+//        } catch (IOException | InterruptedException e) {
+//            e.printStackTrace();
+//        }
+//
+//    }
+
     private void convertToBitmap(float[] outputArr,int imageIndex) {
 
 //         Ensure the output array has values between 0 and 255
                         for (int i = 0; i < outputArr.length; i++) {
 
                             outputArr[i] = Math.min(Math.max(outputArr[i], 0), 1)*255;
-                            Log.e(TAG, "outputArr : "+outputArr[i]);
+//                            Log.e(TAG, "outputArr : "+outputArr[i]);
                         }
 
 //         Create a RGB bitmap of the correct shape
@@ -394,7 +422,7 @@ public class MainActivity2 extends AppCompatActivity {
         for (int i = 0; i < values.length; i++) {
             floatArray[i] = Float.parseFloat(values[i]);
         }
-        Log.e(TAG,"floatArray : " + floatArray);
+//        Log.e(TAG,"floatArray : " + floatArray);
 
         return floatArray;
 
