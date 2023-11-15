@@ -176,12 +176,15 @@ public class MainActivity2 extends AppCompatActivity {
 //                        Log.e(TAG,"outputArr: "+outputArr);
                         Log.e(TAG,"ok : started");
 //                        .toTensor().getDataAsDoubleArray()
+                        long totalStart = System.currentTimeMillis();
                         try{
+
                             long startTime = System.currentTimeMillis();
                             IValue output = decoder.forward(IValue.from(finalExample_image), IValue.from(finalFake_lmark), IValue.from(finalExample_landmark));
                             long endTime = System.currentTimeMillis();
                             long elapsedTime = endTime - startTime;
-                            Log.d("ProcessingSpeed", "Elapsed Time: " + elapsedTime + " milliseconds");
+                            float vgnetFramesPerSecond = 149000/elapsedTime;
+                            Log.d("VGnetProcessingSpeed", "Elapsed Time to run VGnet model : " + vgnetFramesPerSecond + " frames/second");
 
 
                             IValue[] output_tuple = output.toTuple();
@@ -194,7 +197,7 @@ public class MainActivity2 extends AppCompatActivity {
 //                            Log.e(TAG, "shape : "+ shape[0]);
 //                            Log.e(TAG, "shape : "+ shape[1]);
 //                            Log.e(TAG, "shape : "+ shape[2]);
-
+                            long totalImageGenTime = 0;
                             for (int indx = 0; indx < shape[1]; indx++) {
                                 long start = System.currentTimeMillis();
                                 float[] fakeStore = new float[(int) (shape[2] * shape[3] * shape[4])];//[1,149,3,128,128]
@@ -206,6 +209,7 @@ public class MainActivity2 extends AppCompatActivity {
                                 int dim1 = 128;
                                 int dim2 = 128;
                                 float[] newFakeStore = new float[128*128*3];
+//                                long startFor = System.currentTimeMillis();
                                 for (int i = 0; i < dim0; i++) {
                                     for (int j = 0; j < dim1; j++) {
                                         for (int k = 0; k < dim2; k++) {
@@ -215,14 +219,20 @@ public class MainActivity2 extends AppCompatActivity {
                                         }
                                     }
                                 }
+//                                long endFor = System.currentTimeMillis();
+//                                long elapsedFor = endFor - startFor;
+//                                Log.d("VideoGeneration", "Time taken for one for loop["+ indx + "] :" + elapsedFor + " milliseconds");
 //                                Log.e(TAG, "reshapedTensor : "+reshapedTensor);
 
 //                                float[] reshapedArray = reshapedTensor.getDataAsFloatArray();
                                 convertToBitmap(newFakeStore,indx);
                                 long end = System.currentTimeMillis();
-                                long elapsed = endTime - startTime;
-                                Log.d("ImageGeneration", "Time taken to generate one image from floatArray["+ indx + "] :" + elapsed + " milliseconds");
+                                long elapsed = end - start;
+                                totalImageGenTime = totalImageGenTime+elapsed;
+
                             }
+                            float imageGenAverage = totalImageGenTime/149000;
+                            Log.d("ImageGenerationAverage", "Time taken to generate 1 image: " + imageGenAverage + " seconds");
 //                            generateVideo();
 
                         }  catch (Error e) {
@@ -231,6 +241,10 @@ public class MainActivity2 extends AppCompatActivity {
 
 //                        float[] fake_ims, atts ,ms ,extra = decoder.forward(IValue.from(finalExample_image),IValue.from(finalFake_lmark),IValue.from(finalExample_landmark)).toTensor().getDataAsFloatArray();
                         Log.e(TAG,"hurray done");
+                        long totalEnd = System.currentTimeMillis();
+                        long totalElaspsed = totalStart - totalEnd;
+                        float totalFramesPerSecond = 149000/totalElaspsed;
+                        Log.d("VGnetRuntime", "Total runtime" + totalFramesPerSecond+ "frames/second");
 
 
 
