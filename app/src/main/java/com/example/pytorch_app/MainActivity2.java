@@ -393,7 +393,8 @@ public class MainActivity2 extends AppCompatActivity {
                         );
     }
 
-    // Generate a tensor of random doubles given the size of
+    // Generate a tensor of random
+    // s given the size of
     // the tensor to generate
     public Tensor generateTensor(int size) {
         // Create a random array of doubles
